@@ -58,3 +58,43 @@ test('uncertainty ranges widen to include the most likely value', () => {
   const high = M.uncertainty(Object.assign({}, P, { newSalary: 100000 })).newSalary;
   assert.deepStrictEqual(high, { min: 65000, mode: 100000, max: 100000 });
 });
+
+test('every input has help text', () => {
+  const missing = M.SPEC.filter(s => typeof s.help !== 'string' || s.help.length < 20).map(s => s.k);
+  assert.deepStrictEqual(missing, []);
+});
+
+test('uncertainty inputs point to the main input they vary', () => {
+  const byKey = Object.fromEntries(M.SPEC.map(s => [s.k, s]));
+  const unc = M.SPEC.filter(s => s.g === 'Uncertainty');
+  for (const s of unc) {
+    assert.ok(byKey[s.of], `${s.k}.of = ${s.of}`);
+    assert.notStrictEqual(byKey[s.of].g, 'Uncertainty', `${s.k}.of`);
+  }
+  assert.ok(M.SPEC.filter(s => s.g !== 'Uncertainty').every(s => s.of === undefined));
+});
+
+test('the main inputs varied by the Monte Carlo are exactly those with uncertainty inputs', () => {
+  const varied = [...new Set(M.SPEC.filter(s => s.of).map(s => s.of))].sort();
+  assert.deepStrictEqual(M.varied().sort(), varied);
+  assert.deepStrictEqual(varied, ['inflation', 'newGrowth', 'newSalary', 'ret', 'searchMonths', 'stayGrowth']);
+});
+
+test('final wealth breakdown leads from the table to the final wealth figures', async () => {
+  const c = await core;
+  for (const deferred of [true, false]) {
+    const P = Object.assign(M.normalize(M.defaults()), { horizon: 14, deferred });
+    const r = c.analyze(P).sim;
+    for (const [key, rows, final, real] of [['a', r.a, r.finalA, r.realA], ['b', r.b, r.finalB, r.realB]]) {
+      const f = M.finalWealth(r)[key];
+      assert.strictEqual(f.wealthEnd, rows[rows.length - 1].wealth, key);
+      assert.ok(Math.abs(f.wealthEnd - f.saleTax - final) < 1e-6, key);
+      assert.strictEqual(f.nominal, final);
+      assert.strictEqual(f.priceLevel, r.priceLevels[r.priceLevels.length - 1]);
+      assert.ok(Math.abs(f.nominal / f.priceLevel - real) < 1e-6, key);
+      assert.strictEqual(f.real, real);
+    }
+  }
+  const P = M.normalize(M.defaults());
+  assert.ok(M.finalWealth(c.analyze(P).sim).a.saleTax > 0, 'accumulating fund: gains taxed at sale');
+});

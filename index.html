@@ -11,7 +11,7 @@
   :root {
     --bg: #f5f4f0; --surface: #ffffff; --surface-2: #f3f2ee; --border: #e7e5df; --border-strong: #d6d3cb;
     --text: #1d1c1a; --muted: #6d6a63; --faint: #a19d94;
-    --a: #3b5bdb; --b: #e8590c; --pos: #2b8a3e; --neg: #c92a2a;
+    --a: #3b5bdb; --b: #e8590c; --pos: #2b8a3e; --neg: #c92a2a; --sim: #7048e8;
     --shadow: 0 1px 2px rgba(28, 25, 20, .04), 0 4px 16px rgba(28, 25, 20, .05);
     --radius: 14px; --on: #fff;
     color-scheme: light;
@@ -20,7 +20,7 @@
     :root:not([data-theme="light"]) {
       --bg: #111113; --surface: #1a1a1e; --surface-2: #222227; --border: #2c2c33; --border-strong: #3a3a42;
       --text: #ececf0; --muted: #9b9ba6; --faint: #6b6b75;
-      --a: #7b96ff; --b: #ff922b; --pos: #51cf66; --neg: #ff6b6b;
+      --a: #7b96ff; --b: #ff922b; --pos: #51cf66; --neg: #ff6b6b; --sim: #b197fc;
       --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 16px rgba(0, 0, 0, .25); --on: #111;
       color-scheme: dark;
     }
@@ -28,7 +28,7 @@
   :root[data-theme="dark"] {
     --bg: #111113; --surface: #1a1a1e; --surface-2: #222227; --border: #2c2c33; --border-strong: #3a3a42;
     --text: #ececf0; --muted: #9b9ba6; --faint: #6b6b75;
-    --a: #7b96ff; --b: #ff922b; --pos: #51cf66; --neg: #ff6b6b;
+    --a: #7b96ff; --b: #ff922b; --pos: #51cf66; --neg: #ff6b6b; --sim: #b197fc;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 16px rgba(0, 0, 0, .25); --on: #111;
     color-scheme: dark;
   }
@@ -102,7 +102,11 @@
   .group summary svg { margin-left: auto; color: var(--faint); transition: transform .2s; }
   .group[open] summary svg { transform: rotate(180deg); }
   .group .body { padding: 0 18px 16px; display: flex; flex-direction: column; gap: 12px; }
-  .field label { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); margin-bottom: 5px; }
+  .field-head { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+  .field-head .switch { flex: 1; }
+  .field:has(.switch) .field-head { margin-bottom: 0; }
+  .field label { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
+  .group-note { font-size: 12.5px; color: var(--muted); line-height: 1.45; margin: 0; }
   .field.modified label::after { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--a); flex: none; }
   .input { position: relative; }
   .input input {
@@ -116,6 +120,47 @@
   .input input:focus { border-color: var(--a); background: var(--surface); box-shadow: 0 0 0 3px color-mix(in srgb, var(--a) 18%, transparent); }
   .input .unit { position: absolute; right: 12px; top: 0; bottom: 0; display: grid; place-items: center; color: var(--faint); font-size: 12.5px; pointer-events: none; }
   .hint { font-size: 12px; color: var(--faint); margin-top: 5px; line-height: 1.4; }
+  .hint:empty { display: none; }
+
+  /* ---- help tooltips and expected / simulated tags ---- */
+  .help {
+    width: 18px; height: 18px; flex: none; margin-left: auto; padding: 0; border-radius: 50%; cursor: help;
+    border: 1px solid var(--border-strong); background: transparent; color: var(--faint);
+    font-size: 11px; font-weight: 600; line-height: 1; display: grid; place-items: center;
+  }
+  .help:hover, .help:focus-visible, .help[aria-describedby] { color: var(--text); border-color: var(--muted); }
+  .help:focus-visible, .tag:focus-visible { outline: 2px solid var(--a); outline-offset: 1px; }
+  .help-tip {
+    position: fixed; z-index: 50; max-width: min(300px, calc(100vw - 16px)); padding: 9px 12px; border-radius: 10px;
+    background: var(--text); color: var(--bg); font-size: 12.5px; line-height: 1.45; box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
+    pointer-events: none; opacity: 0; transition: opacity .12s;
+  }
+  .help-tip.show { opacity: 1; }
+  .tag {
+    display: inline-flex; align-items: center; height: 18px; padding: 0 7px; border-radius: 99px; flex: none;
+    font-family: inherit; font-size: 10.5px; font-weight: 600; line-height: 1; letter-spacing: .02em; vertical-align: 1px; cursor: help; white-space: nowrap;
+    border: 1px solid var(--border-strong); background: transparent; color: var(--muted);
+  }
+  .tag.sim { border-color: color-mix(in srgb, var(--sim) 45%, transparent); background: color-mix(in srgb, var(--sim) 10%, transparent); color: var(--sim); }
+  button.tag.range { cursor: pointer; }
+  .tags { display: inline-flex; gap: 5px; margin-left: 6px; vertical-align: 1px; }
+  .eyebrow .tag { margin-left: 6px; }
+  .controls .help { margin-left: -12px; }
+  .eyebrow .help, .data th .help, .card-head h2 .help, .odds dt .help { display: inline-grid; margin-left: 5px; vertical-align: -4px; }
+  .recon { margin-top: 22px; border-top: 1px solid var(--border); padding-top: 18px; }
+  .recon h3 { font-size: 14px; }
+  .recon .desc { color: var(--muted); font-size: 13px; margin: 2px 0 12px; max-width: 75ch; }
+  .recon .data td:first-child { white-space: normal; color: var(--text); min-width: 150px; }
+  .recon .data td small { display: block; color: var(--faint); font-size: 12px; font-weight: 400; }
+  @media (max-width: 640px) {
+    .recon .data td small { display: none; }
+    .recon .data td:first-child { min-width: 0; }
+    .recon .data td, .recon .data th { padding-left: 4px; padding-right: 4px; }
+  }
+  .recon .data tr.total td { font-weight: 600; }
+  .recon .data tr.total td:first-child { font-weight: 600; }
+  .recon .data th .chip { width: 16px; height: 16px; font-size: 10px; border-radius: 5px; vertical-align: -3px; margin-right: 5px; }
+  .disagree { font-size: 12.5px; color: var(--muted); margin: 12px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); line-height: 1.45; }
 
   .switch { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px; }
   .switch input { position: absolute; opacity: 0; pointer-events: none; }
@@ -277,7 +322,7 @@
     <section class="card card-pad">
       <div class="card-head">
         <div>
-          <h2>Wealth over time</h2>
+          <h2>Wealth over time<span class="help-slot" data-help-key="chart"></span><span class="tags" data-tags="exp sim"></span></h2>
           <div class="desc" id="mcNote">Before liquidation tax.</div>
         </div>
         <div class="controls">
@@ -286,7 +331,7 @@
             <span><i style="background:var(--b)"></i>B: severance</span>
           </div>
           <label class="switch"><input type="checkbox" id="samples" checked><span class="track"></span>Single runs</label>
-          <label class="switch"><input type="checkbox" id="real"><span class="track"></span>Today’s money</label>
+          <label class="switch"><input type="checkbox" id="real"><span class="track"></span>Today’s money</label><span class="help-slot" data-help-key="real"></span>
         </div>
       </div>
       <div class="chart-wrap" id="chartWrap">
@@ -294,14 +339,14 @@
         <div class="tooltip" id="tip"></div>
       </div>
       <div class="note">
-        <span class="key"><i class="ln"></i>median</span><span class="key"><i class="bd"></i>middle 50 % / 90 % of outcomes</span><span class="key"><i class="dsh"></i>expected values (as in tables)</span>
+        <span class="key"><i class="dsh"></i>expected values (as in tables)</span><span class="key"><i class="ln"></i>median of simulated futures</span><span class="key"><i class="bd"></i>middle 50 % / 90 % of simulated futures</span>
       </div>
     </section>
 
     <section class="card card-pad">
       <div class="card-head">
         <div>
-          <h2>Sensitivity: B minus A</h2>
+          <h2>Sensitivity: B minus A<span class="help-slot" data-help-key="grid"></span><span class="tags" data-tags="exp"></span></h2>
           <div class="desc">Final wealth in today’s money, by new salary and months until the new job starts. Outlined: your inputs.</div>
         </div>
         <div class="scale">A better <span class="grad"></span> B better</div>
@@ -312,8 +357,8 @@
     <section class="card card-pad">
       <div class="card-head">
         <div>
-          <h2>Year by year</h2>
-          <div class="desc">Expected values. Income tax includes Soli and church tax; net income includes severance after tax.</div>
+          <h2>Year by year<span class="tags" data-tags="exp"></span></h2>
+          <div class="desc">Expected values in nominal euros (not adjusted for inflation). Income tax includes Soli and church tax; net income includes severance after tax.</div>
         </div>
         <div class="seg" id="tabs" role="tablist">
           <button type="button" data-t="A" role="tab"><span class="chip a">A</span>Stay</button>
@@ -321,8 +366,21 @@
         </div>
       </div>
       <div class="table-scroll"><div id="tables"></div></div>
+      <div class="recon">
+        <h3>From the table to the final wealth</h3>
+        <div class="desc">The last “Wealth (end)” in the table is not the final wealth shown at the top. The table shows what your
+          investments are worth before you sell them, in nominal euros. The final wealth assumes you sell everything at the end,
+          pay tax on the gains not taxed yet, and converts the result into today’s money.</div>
+        <div class="table-scroll"><div id="recon"></div></div>
+      </div>
     </section>
 
+    <p class="fineprint">
+      <b>Expected vs. simulated.</b> Results marked <i>Expected</i> come from one calculation with your main inputs,
+      taken as the most likely values. Results marked <i>Simulated</i> come from many simulated futures: each one draws
+      new-job timing, salaries and salary growth from the ranges under <i>Uncertainty</i>, and random yearly returns
+      and inflation from the volatilities there. The Uncertainty inputs affect only the simulated results.
+    </p>
     <p class="fineprint">
       <b>Simplifications.</b> Annual assessment taxes (no payroll withholding timing); social security deducted fully as Vorsorgeaufwand;
       brackets and contribution ceilings not indexed over time; no Vorabpauschale; ALG I approximated as rate × net salary
@@ -350,6 +408,11 @@ const kEur = v => {
   return (v < 0 ? '−' : '') + new Intl.NumberFormat('de-DE', { maximumFractionDigits: k < 10 && k % 1 ? 1 : 0 }).format(k) + 'k';
 };
 const STORE = 'abfindung-params-v1';
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+// "?" button whose tooltip explains a field or how a figure is computed.
+const helpBtn = (label, text) => `<button type="button" class="help" aria-label="Help: ${esc(label)}" data-help="${esc(text)}">?</button>`;
+const SPEC_BY = Object.fromEntries(M.SPEC.map(s => [s.k, s]));
+const VARIED = new Set(M.varied());
 const CHEVRON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
 
 let raw = M.defaults();
@@ -365,16 +428,23 @@ Object.entries(groups).forEach(([g, items], i) => {
   det.className = 'group';
   det.open = open;
   det.dataset.group = g;
-  det.innerHTML = `<summary>${g}<span class="count">${items.length}</span><span class="mod" title="Changed from defaults"></span>${CHEVRON}</summary><div class="body"></div>`;
+  const unc = g === 'Uncertainty';
+  det.innerHTML = `<summary>${g}${unc ? '<span class="tag sim">Simulation only</span>' : ''}<span class="count">${items.length}</span><span class="mod" title="Changed from defaults"></span>${CHEVRON}</summary><div class="body"></div>`;
   const body = det.querySelector('.body');
+  if (unc) body.innerHTML = `<p class="group-note">How far reality may differ from the main inputs marked <span class="tag sim">± range</span>.
+    These inputs change only the <span class="tag sim">Simulated</span> results; <span class="tag">Expected</span> results use the main inputs alone.</p>`;
   items.forEach(s => {
     const row = document.createElement('div');
     row.className = 'field';
     row.id = 'f_' + s.k;
-    const hint = s.hint ? `<div class="hint">${s.hint}</div>` : '';
+    const help = helpBtn(s.label, s.help);
+    const range = VARIED.has(s.k) ? `<button type="button" class="tag sim range" data-range="${s.k}"
+      title="Varied in the simulation. Click to set its range under Uncertainty.">± range</button>` : '';
+    // Under the last input for each main input: the resulting range, filled in by drawRangeHints().
+    const hint = s.of && M.SPEC.filter(x => x.of === s.of).pop() === s ? `<div class="hint" id="h_${s.of}"></div>` : '';
     row.innerHTML = typeof s.def === 'boolean'
-      ? `<label class="switch"><input type="checkbox" role="switch" id="p_${s.k}" ${raw[s.k] ? 'checked' : ''}><span class="track"></span>${s.label}</label>${hint}`
-      : `<label for="p_${s.k}">${s.label}</label>
+      ? `<div class="field-head"><label class="switch"><input type="checkbox" role="switch" id="p_${s.k}" ${raw[s.k] ? 'checked' : ''}><span class="track"></span>${s.label}</label>${help}</div>`
+      : `<div class="field-head"><label for="p_${s.k}">${s.label}</label>${range}${help}</div>
          <div class="input"><input type="number" inputmode="decimal" id="p_${s.k}" step="${s.step}" value="${raw[s.k]}"><span class="unit">${s.unit || ''}</span></div>${hint}`;
     body.appendChild(row);
   });
@@ -386,6 +456,37 @@ reset.className = 'reset';
 reset.type = 'button';
 reset.onclick = () => { raw = M.defaults(); M.SPEC.forEach(s => setInput(s)); update(); };
 box.appendChild(reset);
+
+// "± range" on a main input: open the Uncertainty group at its range inputs.
+box.addEventListener('click', e => {
+  const pill = e.target.closest('[data-range]');
+  if (!pill) return;
+  box.querySelector('[data-group="Uncertainty"]').open = true;
+  const first = M.SPEC.find(s => s.of === pill.dataset.range);
+  $('f_' + first.k).scrollIntoView({ block: 'center', behavior: 'smooth' });
+  $('p_' + first.k).focus({ preventScroll: true });
+});
+
+// Value as entered in the UI, with its unit.
+const fmtIn = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 });
+const showVal = (s, v) => s.unit === '€' ? eur(v) : `${fmtIn.format(v)} ${s.unit}`;
+// Under each group of Uncertainty inputs: the range the simulation draws from, with the main input.
+function drawRangeHints() {
+  VARIED.forEach(k => {
+    const main = SPEC_BY[k], v = raw[k];
+    const bounds = M.SPEC.filter(s => s.of === k);
+    let text;
+    if (bounds.length === 2) {
+      const [lo, hi] = bounds.map(s => raw[s.k]).sort((p, q) => p - q);
+      const widened = v < lo || v > hi;
+      text = `Simulated range ${showVal(main, Math.min(lo, v))} – ${showVal(main, Math.max(hi, v))}, ` +
+        `most often near your main input of ${showVal(main, v)}` + (widened ? ' (range widened to include it).' : '.');
+    } else {
+      text = `Fluctuates around your main input of ${showVal(main, v)}.`;
+    }
+    $('h_' + k).textContent = text;
+  });
+}
 
 function setInput(s) {
   const el = $('p_' + s.k);
@@ -412,11 +513,33 @@ $('real').addEventListener('change', update);
 $('samples').addEventListener('change', update);
 const MC_RUNS = 2000, MC_SEED = 1;
 
+// Tags that say which inputs an output is based on; their help explains the difference.
+const TAGS = {
+  exp: ['Expected', 'Calculated once with your main inputs, taken as the most likely values. The Uncertainty inputs are not used.'],
+  sim: ['Simulated', `Based on ${fmt.format(MC_RUNS)} simulated futures. Each one draws new-job timing, salaries and salary growth ` +
+    'from the ranges under Uncertainty, plus random yearly returns and inflation.'],
+};
+const tag = t => `<button type="button" class="tag ${t}" data-help="${esc(TAGS[t][1])}">${TAGS[t][0]}</button>`;
+// Method notes for static section headings.
+const SECTION_HELP = {
+  chart: ['Wealth over time', 'Wealth at the end of each year, before the tax due when selling. Dashed: one calculation with your main inputs. ' +
+    'Solid: median of the simulated futures; bands: 25th–75th and 5th–95th percentile. Medians and bands are taken year by year, ' +
+    'so the solid line is not one particular future. “Today’s money” deflates each simulated future by its own inflation path and the dashed line by the expected inflation. ' +
+    'Simulated returns are lognormal around the expected return, independent between years; inflation drifts back towards its expected value.'],
+  real: ['Today’s money', 'Divides each year’s wealth by the price level of that year, so amounts have today’s purchasing power. ' +
+    'Each simulated future uses its own inflation path; the dashed line uses the expected inflation.'],
+  grid: ['Sensitivity', 'Each cell: final wealth B − A in today’s money, after the tax due when selling, from one calculation with your main inputs. ' +
+    'Only the new salary (rows: 60 / 80 / 100 / 120 % of your input, rounded to 1.000 €) and the months until the new job (columns) change.'],
+};
+document.querySelectorAll('[data-help-key]').forEach(el => (el.outerHTML = helpBtn(...SECTION_HELP[el.dataset.helpKey])));
+document.querySelectorAll('[data-tags]').forEach(el => (el.innerHTML = el.dataset.tags.split(' ').map(tag).join('')));
+
 // ---- rendering ----
 let lastChart = null;
 function update() {
   try { localStorage.setItem(STORE, JSON.stringify(raw)); } catch (e) {}
   markModified();
+  drawRangeHints();
   if (!core) return; // WASM core still loading
   const P = M.normalize(raw);
   const res = core.analyze(P);
@@ -431,6 +554,7 @@ function update() {
   drawChart(P, r, mc);
   drawGrid(res.grid, P);
   drawTables(r);
+  drawFinalWealth(r);
 }
 
 function drawHero(P, r, mc, mcError) {
@@ -443,24 +567,27 @@ function drawHero(P, r, mc, mcError) {
       <div class="sub num">${eur(nominal)} nominal</div></div>`;
   const d = mc && mc.realDiff;
   const pB = d ? Math.round(100 * d.probPositive) : null;
+  const n = r.a.length;
   $('hero').innerHTML = `
     <div class="verdict" style="--win:var(--${w})">
-      <div class="eyebrow">Verdict after ${P.horizon} years</div>
+      <div class="eyebrow">Verdict after ${P.horizon} years${helpBtn('Verdict', `Compares the final wealth of A and B after ${n} years in today’s money, after the tax due when selling all investments (see the breakdown under the year-by-year table). One calculation with your main inputs; the scenario with more final wealth wins. The nominal amount is the same difference before converting to today’s money.`)}${tag('exp')}</div>
       <div class="verdict-title"><span class="chip ${w}">${w.toUpperCase()}</span>${winB ? 'Take the severance' : 'Stay'}</div>
       <p>With the expected values you end up <b class="num">${eur(Math.abs(r.realDiff))}</b> better off
         ${winB ? 'taking the severance' : 'staying'} (today’s money; <span class="num">${eur(Math.abs(r.diff))}</span> nominal).</p>
     </div>
     <div>
-      <div class="eyebrow">Final wealth · today’s money, after tax</div>
+      <div class="eyebrow">Final wealth · today’s money, after tax${helpBtn('Final wealth', `What your investments are worth if you sell everything at the end of year ${n}, after the tax on the gains, divided by the price level of that year (today’s money). The small line shows the same amount in nominal euros. The year-by-year table shows wealth before that tax and in nominal euros; the breakdown below it leads from one to the other.`)}${tag('exp')}</div>
       <div class="bars">${bar('a', 'Stay', r.realA, r.finalA)}${bar('b', 'Take severance', r.realB, r.finalB)}</div>
     </div>
     <div class="odds">
-      <div class="eyebrow">Chance the severance wins</div>
+      <div class="eyebrow">Chance the severance wins${helpBtn('Chance the severance wins', `Share of the ${fmt.format(MC_RUNS)} simulated futures in which B ends with more final wealth than A (today’s money, after the tax due when selling). Within one future, both scenarios see the same market returns and inflation.`)}${tag('sim')}</div>
       ${d ? `<div class="big num" style="color:var(--${pB >= 50 ? 'b' : 'a'})">${pB} %</div>
         <div class="split"><div style="flex-basis:${pB}%;background:var(--b)"></div><div style="flex-basis:${100 - pB}%;background:var(--a)"></div></div>
         <div class="split-legend"><span>B wins</span><span>A wins</span></div>
-        <dl class="num"><dt>Median B − A</dt><dd>${sgn(d.percentiles.p50)}</dd>
-          <dt>90 % range</dt><dd>${sgn(d.percentiles.p5)} … ${sgn(d.percentiles.p95)}</dd></dl>`
+        <dl class="num"><dt>Median B − A${helpBtn('Median B − A', 'Median of the difference B − A across all simulated futures, not the difference between the two scenarios’ medians: in half of the futures B beats A by more than this, in half by less.')}</dt><dd>${sgn(d.percentiles.p50)}</dd>
+          <dt>90 % range${helpBtn('90 % range', '5th to 95th percentile of the difference B − A across the simulated futures: 90 % of them fall in this range, 5 % below and 5 % above.')}</dt><dd>${sgn(d.percentiles.p5)} … ${sgn(d.percentiles.p95)}</dd></dl>
+        ${(d.probPositive >= 0.5) !== winB ? `<p class="disagree">The simulation leans the other way than the verdict, which uses only
+          your main inputs. Usually the Uncertainty ranges reach further to one side of a main input.</p>` : ''}`
       : `<div class="big">–</div><div class="note">Monte Carlo failed: ${mcError}</div>`}
     </div>`;
 }
@@ -471,12 +598,19 @@ function drawStats(P, r, res) {
   const [s1, s1s] = be(res.beNewSalary, 'salary');
   const [s2, s2s] = be(res.beSeverance, 'severance');
   const rate = P.severance ? (100 * r.sevTax / P.severance).toFixed(1).replace('.', ',') : '0';
+  const fair = 'Final wealth in today’s money, after the tax due when selling';
   $('stats').innerHTML = [
-    ['Severance after tax', eur(r.sevNet), `of ${eur(P.severance)} · ${rate} % tax`],
-    ['Break-even new salary', s1, s1s],
-    ['Break-even severance', s2, s2s],
-    ['ALG I per month', eur(r.algMonthly), `${Math.min(P.algMonths, P.searchMonths)} months used`],
-  ].map(([l, v, s]) => `<div><div class="eyebrow">${l}</div><div class="v num">${v}</div><div class="s num">${s}</div></div>`).join('');
+    ['Severance after tax', eur(r.sevNet), `of ${eur(P.severance)} · ${rate} % tax`,
+      'Severance minus the extra tax it causes: income tax, Soli and church tax for the payout year with the severance, minus the same without it. ' +
+      'Uses the Fünftelregelung if switched on and includes the effect of ALG I on your tax rate (Progressionsvorbehalt). The percentage is this extra tax divided by the gross severance.'],
+    ['Break-even new salary', s1, s1s,
+      `New-job gross salary at which A and B end equal (${fair}), with all other main inputs unchanged. Searched between 0 and 500.000 € by bisection.`],
+    ['Break-even severance', s2, s2s,
+      `Gross severance at which A and B end equal (${fair}), with all other main inputs unchanged. Searched between 0 and 3 million € by bisection.`],
+    ['ALG I per month', eur(r.algMonthly), `${Math.min(P.algMonths, P.searchMonths)} months used`,
+      'ALG I rate × the monthly net of your current salary (gross capped at the pension contribution ceiling, minus social security and the income tax computed here). ' +
+      'The Agentur für Arbeit uses a flat-rate net (Leistungsentgelt), so the real amount can differ a little. Months used: the smaller of your entitlement and the months until the new job.'],
+  ].map(([l, v, s, h]) => `<div><div class="eyebrow">${l}${helpBtn(l, h)}${tag('exp')}</div><div class="v num">${v}</div><div class="s num">${s}</div></div>`).join('');
 }
 
 // Round axis bounds to a "nice" step.
@@ -570,7 +704,7 @@ function showHover(i) {
   const diff = series[1].mid[i] - series[0].mid[i];
   const tip = $('tip');
   tip.innerHTML = `<div class="t">${i === 0 ? 'Today' : 'After year ' + i}</div><div class="r num">${series.map(row).join('')}</div>` +
-    `<div class="d num"><span>B − A (medians)</span><b style="color:var(--${diff >= 0 ? 'b' : 'a'})">${sgn(diff)}</b></div>`;
+    `<div class="d num"><span>Median B − median A</span><b style="color:var(--${diff >= 0 ? 'b' : 'a'})">${sgn(diff)}</b></div>`;
   const tw = tip.offsetWidth;
   tip.style.left = (x(i) + 16 + tw > W ? x(i) - 16 - tw : x(i) + 16) + 'px';
   tip.classList.add('show');
@@ -614,9 +748,20 @@ function drawTables(r) {
   const sev = tab === 'B';
   const rows = sev ? r.b : r.a;
   const c = (v, cls = '') => `<td class="${v === 0 ? 'dim' : cls}">${v === 0 ? '–' : eur(v)}</td>`;
-  let h = `<table class="data"><thead><tr><th>Year</th><th>Gross wage</th><th>ALG I</th>` +
-    (sev ? '<th>Severance</th>' : '') +
-    '<th>Social sec.</th><th>Income tax</th><th>Net income</th><th>Spending</th><th>Wealth (end)</th></tr></thead><tbody>';
+  const th = ([label, text]) => `<th>${label}${helpBtn(label, text)}</th>`;
+  let h = '<table class="data"><thead><tr><th>Year</th>' + [
+    ['Gross wage', 'Salary paid in this year: the current job until you leave, then the new job once it starts. Salaries rise by their growth rate from year 2 on.'],
+    ['ALG I', 'Monthly ALG I × months of unemployment that fall into this year.'],
+    ...(sev ? [['Severance', 'Gross severance, in the year it is paid.']] : []),
+    ['Social sec.', 'Your employee share of pension (9,3 %), unemployment (1,3 %), health (7,3 % + half the Zusatzbeitrag) and care insurance, ' +
+      'month by month up to the contribution ceilings. None on ALG I and severance.'],
+    ['Income tax', 'Income tax + Soli + church tax for this year, including the tax on the severance. With joint assessment: the household’s tax minus what your partner would pay alone.'],
+    ['Net income', 'Gross wage + ALG I + severance − social security − income tax.'],
+    ['Spending', 'Your net spending, raised each year by the expected inflation.'],
+    ['Wealth (end)', 'Value of your investments at the end of the year, in nominal euros and before the tax due when selling them. ' +
+      'Each year’s surplus or shortfall (net income − spending) is assumed to arrive mid-year and earns half a year’s return; the severance is invested from its payment month. ' +
+      'See the breakdown below the table for how the last row becomes the final wealth.'],
+  ].map(th).join('') + '</tr></thead><tbody>';
   rows.forEach(x => {
     h += `<tr><td>${x.year}</td>${c(x.wage)}${c(x.alg)}` + (sev ? c(x.sev, 'hl') : '') +
       `${c(x.sv)}${c(x.tax)}${c(x.net)}${c(x.spend)}${c(x.wealth, 'strong')}</tr>`;
@@ -626,6 +771,75 @@ function drawTables(r) {
     b.classList.toggle('active', b.dataset.t === tab);
     b.setAttribute('aria-selected', b.dataset.t === tab);
   });
+}
+
+// ---- help tooltips: hover or focus shows, click / tap pins, Escape or click elsewhere hides ----
+const helpTip = document.createElement('div');
+helpTip.className = 'help-tip';
+helpTip.id = 'helpTip';
+helpTip.setAttribute('role', 'tooltip');
+document.body.appendChild(helpTip);
+let helpFor = null, helpPinned = false;
+function showHelp(el, pin) {
+  if (helpFor && helpFor !== el) helpFor.removeAttribute('aria-describedby');
+  helpFor = el;
+  helpPinned = pin;
+  helpTip.textContent = el.dataset.help;
+  el.setAttribute('aria-describedby', 'helpTip');
+  placeHelp();
+  helpTip.classList.add('show');
+}
+// Below the trigger (above it near the bottom edge), kept inside the viewport.
+function placeHelp() {
+  if (!helpFor) return;
+  if (!helpFor.isConnected) return hideHelp(); // re-rendered output
+  const r = helpFor.getBoundingClientRect(), tw = helpTip.offsetWidth, th = helpTip.offsetHeight;
+  const left = Math.min(Math.max(8, r.left + r.width / 2 - tw / 2), innerWidth - tw - 8);
+  const top = r.bottom + 8 + th > innerHeight - 8 ? r.top - 8 - th : r.bottom + 8;
+  helpTip.style.left = left + 'px';
+  helpTip.style.top = top + 'px';
+}
+function hideHelp() {
+  if (helpFor) helpFor.removeAttribute('aria-describedby');
+  helpFor = null;
+  helpPinned = false;
+  helpTip.classList.remove('show');
+}
+const helpTarget = e => e.target.closest && e.target.closest('[data-help]');
+document.addEventListener('mouseover', e => { const el = helpTarget(e); if (el && !helpPinned) showHelp(el, false); });
+document.addEventListener('mouseout', e => {
+  const el = helpTarget(e);
+  if (el && el === helpFor && !helpPinned && !el.contains(e.relatedTarget)) hideHelp();
+});
+document.addEventListener('focusin', e => { const el = helpTarget(e); if (el) showHelp(el, false); });
+document.addEventListener('focusout', e => { if (helpTarget(e) === helpFor) hideHelp(); });
+document.addEventListener('click', e => {
+  const el = helpTarget(e);
+  if (!el) return helpPinned && hideHelp();
+  e.preventDefault();
+  if (helpPinned && helpFor === el) hideHelp(); else showHelp(el, true);
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') hideHelp(); });
+addEventListener('scroll', placeHelp, true);
+addEventListener('resize', placeHelp);
+
+// Breakdown from the last table row to the final wealth figures, for both scenarios.
+const fmtPL = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+function drawFinalWealth(r) {
+  const f = M.finalWealth(r), n = r.a.length;
+  const pl = f.a.priceLevel, rise = Math.round(100 * (pl - 1));
+  const steps = [
+    ['', `Wealth (end) of year ${n}`, 'Last row of the table: nominal, before selling', x => eur(x.wealthEnd)],
+    ['', '− Tax when selling everything', 'Abgeltungsteuer, Soli and church tax on gains not taxed yet, after Teilfreistellung and Sparer-Pauschbetrag',
+      x => x.saleTax ? '−' + eur(x.saleTax) : '–'],
+    ['total', '= Final wealth, nominal', 'The small “nominal” line under Final wealth', x => eur(x.nominal)],
+    ['', `÷ Price level ${fmtPL.format(pl)}`, `Prices rise by ${rise} % over ${n} years at your inflation rate`, () => '÷ ' + fmtPL.format(pl)],
+    ['total', '= Final wealth in today’s money', 'The large figure under Final wealth, which the verdict compares', x => eur(x.real)],
+  ];
+  $('recon').innerHTML = `<table class="data"><thead><tr><th></th><th><span class="chip a">A</span>Stay</th>` +
+    `<th><span class="chip b">B</span>Severance</th></tr></thead><tbody>` +
+    steps.map(([cls, label, note, v]) => `<tr class="${cls}"><td>${label}<small>${note}</small></td><td>${v(f.a)}</td><td>${v(f.b)}</td></tr>`).join('') +
+    '</tbody></table>';
 }
 
 document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => { tab = b.dataset.t; update(); }));
