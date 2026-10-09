@@ -2,6 +2,11 @@
 
 Compares *staying* in your job with *taking a severance package* and investing it (German tax rules, tariff 2026).
 
+> **Disclaimer:** This tool is provided as is, without any warranty. We cannot guarantee that the
+> calculations, tax rules or results are correct, complete or up to date. Check all values yourself
+> (ideally with a tax advisor) before making any decision based on them. This is not tax, legal or
+> financial advice.
+
 - `core/` – Rust crate with all computations: tax, social security, ALG I, portfolio, simulation,
   break-evens, sensitivity grid and the Monte Carlo analysis (`monte_carlo/`, `random/`).
 - `core.js`, `core.wasm.js` – the crate compiled to WASM: wasm-bindgen bindings plus the module as base64
@@ -22,7 +27,6 @@ Tasks (needs [just](https://github.com/casey/just)):
 The browser calls two wasm-bindgen exports, `analyze` and `monteCarlo`: JSON in, JSON out; errors are thrown.
 `monteCarlo` (2000 runs on every input change) returns the final-outcome summaries plus per-year wealth
 percentiles and 40 sample paths per scenario, which the wealth chart draws behind the deterministic run.
-Not tax advice.
 
 ## Deployment (GitHub Pages)
 
