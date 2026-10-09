@@ -6,6 +6,8 @@ use serde::Deserialize;
 #[derive(Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
+    /// Calendar month (1–12) in which the simulation starts, i.e. today.
+    pub start_month: f64,
     pub salary: f64,
     pub stay_growth: f64,
     pub severance: f64,
@@ -39,6 +41,23 @@ pub struct Params {
     pub wk: f64,
     pub sparer: f64,
     pub soli_free: f64,
+    /// Age today, in years.
+    pub age: f64,
+    pub retirement_age: f64,
+    /// Remaining life expectancy at the retirement age, in years.
+    pub life_expectancy: f64,
+    /// Monthly pension per Entgeltpunkt today (aktueller Rentenwert).
+    pub rentenwert: f64,
+    /// Durchschnittsentgelt of the current year: a salary this high earns one Entgeltpunkt per year.
+    pub avg_earnings: f64,
+    /// Yearly growth of average earnings, the Rentenwert and the pension contribution ceiling.
+    pub pension_growth: f64,
+    /// Yearly rate at which future pension payments are discounted to the end of the horizon.
+    pub pension_discount: f64,
+    /// Marginal income tax rate in retirement (incl. Soli and church tax).
+    pub pension_tax: f64,
+    /// Add the value of the pension rights earned within the horizon to the final wealth.
+    pub pension_in_wealth: bool,
 }
 
 impl Params {
@@ -57,11 +76,13 @@ pub fn test_defaults() -> Params {
 #[cfg(test)]
 pub fn test_defaults_json() -> serde_json::Value {
     serde_json::json!({
-        "salary": 90000.0, "stayGrowth": 0.02, "severance": 80000.0, "exitMonth": 0.0, "payDelay": 0.0,
+        "startMonth": 1.0, "salary": 90000.0, "stayGrowth": 0.02, "severance": 80000.0, "exitMonth": 0.0, "payDelay": 0.0,
         "fuenftel": true, "searchMonths": 6.0, "algMonths": 12.0, "algRate": 0.6, "newSalary": 80000.0,
         "newGrowth": 0.02, "horizon": 10.0, "spending": 45000.0, "inflation": 0.02, "startWealth": 0.0,
         "ret": 0.06, "ter": 0.002, "debtRate": 0.06, "joint": false, "partnerZve": 0.0, "church": 0.0,
         "extraDeduct": 0.0, "tf": 0.3, "deferred": true, "zusatz": 0.029, "pvRate": 0.024,
-        "bbgRV": 101400.0, "bbgKV": 69750.0, "wk": 1230.0, "sparer": 1000.0, "soliFree": 20350.0
+        "bbgRV": 101400.0, "bbgKV": 69750.0, "wk": 1230.0, "sparer": 1000.0, "soliFree": 20350.0,
+        "age": 45.0, "retirementAge": 67.0, "lifeExpectancy": 20.0, "rentenwert": 42.52, "avgEarnings": 51944.0,
+        "pensionGrowth": 0.025, "pensionDiscount": 0.03, "pensionTax": 0.25, "pensionInWealth": false
     })
 }

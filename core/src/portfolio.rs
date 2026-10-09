@@ -15,16 +15,17 @@ impl Port {
         Port { w: p.start_wealth, b: p.start_wealth, pb: 0.0 }
     }
 
-    /// One year of growth at the gross market return `ret` (costs are deducted here).
-    pub fn grow_year(&mut self, p: &Params, ret: f64) {
+    /// Growth over `years` (one calendar year or part of it) at the yearly gross market return `ret`
+    /// (costs are deducted here). Starts a new tax year, so the Sparer-Pauschbetrag is available again.
+    pub fn grow(&mut self, p: &Params, ret: f64, years: f64) {
         let r = ret - p.ter;
         self.pb = p.sparer_total();
         if self.w < 0.0 {
-            self.w *= 1.0 + p.debt_rate;
+            self.w *= (1.0 + p.debt_rate).powf(years);
             self.b = self.w;
             return;
         }
-        let gain = self.w * r;
+        let gain = self.w * ((1.0 + r).max(0.0).powf(years) - 1.0);
         if p.deferred || gain <= 0.0 {
             self.w += gain;
             if !p.deferred {
@@ -79,5 +80,29 @@ impl Port {
         }
         let taxable = ((self.w - self.b) * (1.0 - p.tf) - p.sparer_total()).max(0.0);
         self.w - taxable * cap_tax_rate(p)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::params::test_defaults;
+
+    #[test]
+    fn growth_over_part_of_a_year_compounds() {
+        let mut p = test_defaults();
+        p.start_wealth = 100_000.0;
+        let mut port = Port::new(&p);
+        port.grow(&p, 0.06, 0.5);
+        assert!((port.w - 100_000.0 * 1.058f64.sqrt()).abs() < 1e-6);
+    }
+
+    #[test]
+    fn debt_over_part_of_a_year_compounds() {
+        let mut p = test_defaults();
+        p.start_wealth = -10_000.0;
+        let mut port = Port::new(&p);
+        port.grow(&p, 0.06, 0.25);
+        assert!((port.w + 10_000.0 * 1.06f64.powf(0.25)).abs() < 1e-6);
     }
 }

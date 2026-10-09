@@ -18,10 +18,34 @@ loadScript('core.js');
 loadScript('core.wasm.js');
 const core = M.loadCore(vm.runInThisContext('wasm_bindgen'), window.CORE_WASM_B64);
 
+// Default inputs, starting in January so that every row is a full calendar year.
+const inputs = (extra = {}) => Object.assign(M.normalize(M.defaults()), { startMonth: 1 }, extra);
+
 test('analyze returns the deterministic simulation', async () => {
-  const res = (await core).analyze(M.normalize(M.defaults()));
+  const res = (await core).analyze(inputs());
   assert.strictEqual(typeof res.sim.realDiff, 'number');
   assert.strictEqual(res.sim.a.length, 10);
+});
+
+test('the current month is the default start month', () => {
+  assert.strictEqual(M.defaults().startMonth, new Date().getMonth() + 1);
+});
+
+test('a start later in the year splits the horizon into partial calendar years', async () => {
+  const r = (await core).analyze(inputs({ startMonth: 10 })).sim;
+  assert.strictEqual(r.a.length, 11);
+  assert.deepStrictEqual([r.a[0].months, r.a[1].months, r.a[10].months], [3, 12, 9]);
+  assert.strictEqual(r.priceLevels.length, 12);
+});
+
+test('pension rights are added to the final wealth only when counted', async () => {
+  const c = await core;
+  const on = c.analyze(inputs({ pensionInWealth: true })).sim;
+  const off = c.analyze(inputs({ pensionInWealth: false })).sim;
+  assert.ok(on.pointsA > on.pointsB && on.pensionA > on.pensionB);
+  assert.ok(Math.abs(M.finalWealth(on).b.pension - on.pensionB) < 1e-6);
+  assert.strictEqual(M.finalWealth(off).b.pension, 0);
+  assert.ok(on.realDiff < off.realDiff);
 });
 
 test('invalid input throws a JS error', async () => {
@@ -31,7 +55,7 @@ test('invalid input throws a JS error', async () => {
 
 test('monteCarlo summarizes the requested number of runs reproducibly', async () => {
   const c = await core;
-  const P = M.normalize(M.defaults());
+  const P = inputs();
   const r = c.monteCarlo(P, 500, 1);
   assert.strictEqual(r.runs, 500);
   assert.ok(r.realDiff.probPositive >= 0 && r.realDiff.probPositive <= 1);
@@ -41,7 +65,7 @@ test('monteCarlo summarizes the requested number of runs reproducibly', async ()
 
 test('monteCarlo returns wealth bands and sample paths per year', async () => {
   const c = await core;
-  const r = c.monteCarlo(M.normalize(M.defaults()), 200, 1);
+  const r = c.monteCarlo(inputs(), 200, 1);
   for (const w of [r.wealthA, r.wealthB]) {
     for (const s of [w.nominal, w.real]) {
       assert.strictEqual(s.percentiles.length, 11);
@@ -53,7 +77,7 @@ test('monteCarlo returns wealth bands and sample paths per year', async () => {
 });
 
 test('uncertainty ranges widen to include the most likely value', () => {
-  const P = M.normalize(M.defaults());
+  const P = inputs();
   assert.deepStrictEqual(M.uncertainty(P).newSalary, { min: 65000, mode: 80000, max: 90000 });
   const high = M.uncertainty(Object.assign({}, P, { newSalary: 100000 })).newSalary;
   assert.deepStrictEqual(high, { min: 65000, mode: 100000, max: 100000 });
@@ -83,18 +107,18 @@ test('the main inputs varied by the Monte Carlo are exactly those with uncertain
 test('final wealth breakdown leads from the table to the final wealth figures', async () => {
   const c = await core;
   for (const deferred of [true, false]) {
-    const P = Object.assign(M.normalize(M.defaults()), { horizon: 14, deferred });
+    const P = inputs({ horizon: 14, deferred });
     const r = c.analyze(P).sim;
     for (const [key, rows, final, real] of [['a', r.a, r.finalA, r.realA], ['b', r.b, r.finalB, r.realB]]) {
       const f = M.finalWealth(r)[key];
       assert.strictEqual(f.wealthEnd, rows[rows.length - 1].wealth, key);
-      assert.ok(Math.abs(f.wealthEnd - f.saleTax - final) < 1e-6, key);
+      assert.ok(Math.abs(f.wealthEnd - f.saleTax + f.pension - final) < 1e-6, key);
       assert.strictEqual(f.nominal, final);
       assert.strictEqual(f.priceLevel, r.priceLevels[r.priceLevels.length - 1]);
       assert.ok(Math.abs(f.nominal / f.priceLevel - real) < 1e-6, key);
       assert.strictEqual(f.real, real);
     }
   }
-  const P = M.normalize(M.defaults());
+  const P = inputs();
   assert.ok(M.finalWealth(c.analyze(P).sim).a.saleTax > 0, 'accumulating fund: gains taxed at sale');
 });

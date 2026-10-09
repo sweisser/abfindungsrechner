@@ -8,6 +8,7 @@ pub mod api;
 pub mod income;
 pub mod monte_carlo;
 pub mod params;
+pub mod pension;
 pub mod portfolio;
 pub mod random;
 pub mod simulation;

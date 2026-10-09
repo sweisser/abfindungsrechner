@@ -59,6 +59,8 @@ fn user_tax(p: &Params, it: &Items) -> f64 {
 #[serde(rename_all = "camelCase")]
 pub struct YearRow {
     pub year: u32,
+    /// Months of this calendar year inside the horizon (less than 12 in the first and last year).
+    pub months: f64,
     pub spend: f64,
     pub wealth: f64,
     pub wage: f64,
@@ -69,6 +71,32 @@ pub struct YearRow {
     pub tax_on_sev: f64,
     pub net: f64,
     pub sev_net: f64,
+    /// Entgeltpunkte of the statutory pension earned in this row's months.
+    pub points: f64,
+}
+
+impl YearRow {
+    /// The cash flows (wage, social security, ALG I, severance, tax, net) multiplied by `f`.
+    pub fn scaled(&self, f: f64) -> YearRow {
+        self.combine(self, |x, _| x * f)
+    }
+
+    /// The cash flows minus those of `o`; everything else stays as in `self`.
+    pub fn minus(&self, o: &YearRow) -> YearRow {
+        self.combine(o, |x, y| x - y)
+    }
+
+    fn combine(&self, o: &YearRow, f: impl Fn(f64, f64) -> f64) -> YearRow {
+        YearRow {
+            wage: f(self.wage, o.wage),
+            sv: f(self.sv, o.sv),
+            alg: f(self.alg, o.alg),
+            sev: f(self.sev, o.sev),
+            tax: f(self.tax, o.tax),
+            net: f(self.net, o.net),
+            ..self.clone()
+        }
+    }
 }
 
 pub fn year_cash(p: &Params, segs: &[Seg], alg: f64, sev: f64) -> YearRow {
@@ -93,4 +121,24 @@ pub fn alg_monthly(p: &Params) -> f64 {
     let m = (p.salary / 12.0).min(p.bbg_rv / 12.0);
     let c = year_cash(p, &[Seg { m, n: 12.0 }], 0.0, 0.0);
     p.alg_rate * (c.net / 12.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::params::test_defaults;
+
+    #[test]
+    fn scaled_and_minus_touch_only_cash_flows() {
+        let p = test_defaults();
+        let mut r = year_cash(&p, &[Seg { m: 5000.0, n: 12.0 }], 1000.0, 2000.0);
+        r.year = 3;
+        let half = r.scaled(0.5);
+        assert_eq!(
+            (half.wage, half.tax, half.net, half.year, half.tax_on_sev),
+            (30000.0, r.tax / 2.0, r.net / 2.0, 3, r.tax_on_sev)
+        );
+        let rest = r.minus(&half);
+        assert_eq!((rest.wage, rest.alg, rest.sev, rest.sv), (30000.0, 500.0, 1000.0, r.sv / 2.0));
+    }
 }

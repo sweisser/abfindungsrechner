@@ -370,7 +370,7 @@
         <h3>From the table to the final wealth</h3>
         <div class="desc">The last “Wealth (end)” in the table is not the final wealth shown at the top. The table shows what your
           investments are worth before you sell them, in nominal euros. The final wealth assumes you sell everything at the end,
-          pay tax on the gains not taxed yet, and converts the result into today’s money.</div>
+          pay tax on the gains not taxed yet, adds the value of the pension points earned (if counted), and converts the result into today’s money.</div>
         <div class="table-scroll"><div id="recon"></div></div>
       </div>
     </section>
@@ -417,6 +417,7 @@ const CHEVRON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" str
 
 let raw = M.defaults();
 try { Object.assign(raw, JSON.parse(localStorage.getItem(STORE) || '{}')); } catch (e) {}
+raw.startMonth = M.defaults().startMonth; // "today" is always the current month on a new visit
 
 // ---- build form ----
 const box = $('inputs');
@@ -553,8 +554,8 @@ function update() {
   lastChart = [P, r, mc];
   drawChart(P, r, mc);
   drawGrid(res.grid, P);
-  drawTables(r);
-  drawFinalWealth(r);
+  drawTables(r, P);
+  drawFinalWealth(r, P);
 }
 
 function drawHero(P, r, mc, mcError) {
@@ -567,16 +568,15 @@ function drawHero(P, r, mc, mcError) {
       <div class="sub num">${eur(nominal)} nominal</div></div>`;
   const d = mc && mc.realDiff;
   const pB = d ? Math.round(100 * d.probPositive) : null;
-  const n = r.a.length;
   $('hero').innerHTML = `
     <div class="verdict" style="--win:var(--${w})">
-      <div class="eyebrow">Verdict after ${P.horizon} years${helpBtn('Verdict', `Compares the final wealth of A and B after ${n} years in today’s money, after the tax due when selling all investments (see the breakdown under the year-by-year table). One calculation with your main inputs; the scenario with more final wealth wins. The nominal amount is the same difference before converting to today’s money.`)}${tag('exp')}</div>
+      <div class="eyebrow">Verdict after ${P.horizon} years${helpBtn('Verdict', `Compares the final wealth of A and B after ${P.horizon} years in today’s money, after the tax due when selling all investments (see the breakdown under the year-by-year table). One calculation with your main inputs; the scenario with more final wealth wins. The nominal amount is the same difference before converting to today’s money.`)}${tag('exp')}</div>
       <div class="verdict-title"><span class="chip ${w}">${w.toUpperCase()}</span>${winB ? 'Take the severance' : 'Stay'}</div>
       <p>With the expected values you end up <b class="num">${eur(Math.abs(r.realDiff))}</b> better off
         ${winB ? 'taking the severance' : 'staying'} (today’s money; <span class="num">${eur(Math.abs(r.diff))}</span> nominal).</p>
     </div>
     <div>
-      <div class="eyebrow">Final wealth · today’s money, after tax${helpBtn('Final wealth', `What your investments are worth if you sell everything at the end of year ${n}, after the tax on the gains, divided by the price level of that year (today’s money). The small line shows the same amount in nominal euros. The year-by-year table shows wealth before that tax and in nominal euros; the breakdown below it leads from one to the other.`)}${tag('exp')}</div>
+      <div class="eyebrow">Final wealth · today’s money, after tax${helpBtn('Final wealth', `What your investments are worth if you sell everything at the end of the ${P.horizon} years, after the tax on the gains${P.pensionInWealth ? ', plus the value of the statutory pension points earned within the horizon' : ''}, divided by the price level at that time (today’s money). The small line shows the same amount in nominal euros. The year-by-year table shows wealth before that tax and in nominal euros; the breakdown below it leads from one to the other.`)}${tag('exp')}</div>
       <div class="bars">${bar('a', 'Stay', r.realA, r.finalA)}${bar('b', 'Take severance', r.realB, r.finalB)}</div>
     </div>
     <div class="odds">
@@ -598,7 +598,9 @@ function drawStats(P, r, res) {
   const [s1, s1s] = be(res.beNewSalary, 'salary');
   const [s2, s2s] = be(res.beSeverance, 'severance');
   const rate = P.severance ? (100 * r.sevTax / P.severance).toFixed(1).replace('.', ',') : '0';
-  const fair = 'Final wealth in today’s money, after the tax due when selling';
+  const fair = 'Final wealth in today’s money, after the tax due when selling' + (P.pensionInWealth ? ', incl. pension rights' : '');
+  const dPts = r.pointsB - r.pointsA;
+  const dPension = (r.pensionB - r.pensionA) / r.deflator;
   $('stats').innerHTML = [
     ['Severance after tax', eur(r.sevNet), `of ${eur(P.severance)} · ${rate} % tax`,
       'Severance minus the extra tax it causes: income tax, Soli and church tax for the payout year with the severance, minus the same without it. ' +
@@ -610,6 +612,13 @@ function drawStats(P, r, res) {
     ['ALG I per month', eur(r.algMonthly), `${Math.min(P.algMonths, P.searchMonths)} months used`,
       'ALG I rate × the monthly net of your current salary (gross capped at the pension contribution ceiling, minus social security and the income tax computed here). ' +
       'The Agentur für Arbeit uses a flat-rate net (Leistungsentgelt), so the real amount can differ a little. Months used: the smaller of your entitlement and the months until the new job.'],
+    ['Pension B − A', sgn(dPts * P.rentenwert) + ' /mo', `${dPts >= 0 ? '+' : '−'}${fmtPts.format(Math.abs(dPts))} Entgeltpunkte`,
+      'Difference in statutory pension points earned within the horizon (B minus A; see the Pension pts column), times today’s Rentenwert: ' +
+      'the gross monthly pension it makes for life, at today’s pension level. Points earned after the horizon are not included.'],
+    ['Pension rights B − A', sgn(dPension), P.pensionInWealth ? 'included in final wealth' : 'not in final wealth',
+      'Value of the point difference at the end of the horizon, in today’s money: monthly pensions from your retirement age for life, rising with wage and pension growth, ' +
+      'after retirees’ health and care contributions and income tax, weighted by the chance to be alive (Gompertz mortality fitted to your life expectancy) ' +
+      'and discounted at the pension discount rate. Counted in the final wealth when “Count pension rights in final wealth” is on.'],
   ].map(([l, v, s, h]) => `<div><div class="eyebrow">${l}${helpBtn(l, h)}${tag('exp')}</div><div class="v num">${v}</div><div class="s num">${s}</div></div>`).join('');
 }
 
@@ -639,10 +648,14 @@ function drawChart(P, r, mc) {
   const el = $('chart');
   const W = Math.max(280, el.clientWidth), H = W < 600 ? 260 : 340, L = 44, R = 52, T = 10, Bt = 26;
   const n = series[0].line.length;
+  // Points sit at the end of each row's calendar year; the axis runs in years from today.
+  const t = r.a.reduce((acc, row) => [...acc, acc[acc.length - 1] + row.months / 12], [0]);
+  const span = t[n - 1] || 1;
   // Scale to the 90 % bands; extreme single runs are clipped.
   const all = series.flatMap(s => s.stats ? [...s.line, ...s.stats.percentiles.flatMap(q => [q.p5, q.p95])] : s.line);
   const { min: lo, max: hi, ticks } = niceScale(Math.min(0, ...all), Math.max(1, ...all), H < 300 ? 4 : 5);
-  const x = i => L + (W - L - R) * i / (n - 1 || 1);
+  const xt = v => L + (W - L - R) * v / span;
+  const x = i => xt(t[i]);
   const y = v => T + (H - T - Bt) * (1 - (v - lo) / (hi - lo));
   const pts = s => s.map((v, i) => x(i).toFixed(1) + ' ' + y(v).toFixed(1));
   const path = s => 'M' + pts(s).join(' L');
@@ -652,8 +665,8 @@ function drawChart(P, r, mc) {
     g += `<line class="${v === 0 && lo < 0 ? 'zero' : 'grid'}" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/>` +
          `<text x="${L - 10}" y="${y(v)}" dy=".35em" text-anchor="end">${v === 0 ? '0' : kEur(v)}</text>`;
   });
-  const every = Math.ceil(n / Math.max(2, Math.floor((W - L - R) / 40)));
-  for (let i = 0; i < n; i += every) g += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${i === 0 ? 'now' : 'yr ' + i}</text>`;
+  const every = Math.ceil((span + 1) / Math.max(2, Math.floor((W - L - R) / 40)));
+  for (let v = 0; v <= span + 1e-9; v += every) g += `<text x="${xt(v)}" y="${H - 6}" text-anchor="middle">${v === 0 ? 'now' : v + ' y'}</text>`;
   g += '<g clip-path="url(#plot)">';
   if (showSamples) series.forEach(s => s.stats && s.stats.samples.forEach(p =>
     g += `<path d="${path(p)}" style="fill:none;stroke:var(--${s.key});stroke-width:1;opacity:.08"/>`));
@@ -678,14 +691,14 @@ function drawChart(P, r, mc) {
   g += `<g id="hover" style="display:none"><line class="hover-line" y1="${T}" y2="${H - Bt}"/>` +
        series.map(s => `<circle r="4.5" data-k="${s.key}" style="fill:var(--${s.key});stroke:var(--surface);stroke-width:2"/>`).join('') + '</g>';
   el.innerHTML = `<svg width="${W}" height="${H}" role="img" aria-label="Wealth over time">${g}</svg>`;
-  chart = { x, y, n, L, R, W, series };
+  chart = { x, y, n, L, R, W, series, t, span, rows: r.a, P };
   if (hoverIdx != null) showHover(hoverIdx);
 }
 
 // Hover: crosshair plus tooltip with the median and 90 % range per scenario.
 let hoverIdx = null;
 function showHover(i) {
-  const { x, y, n, W, series } = chart;
+  const { x, y, n, W, series, rows, P } = chart;
   if (i < 0 || i >= n) return hideHover();
   hoverIdx = i;
   const hv = $('hover');
@@ -703,7 +716,7 @@ function showHover(i) {
   };
   const diff = series[1].mid[i] - series[0].mid[i];
   const tip = $('tip');
-  tip.innerHTML = `<div class="t">${i === 0 ? 'Today' : 'After year ' + i}</div><div class="r num">${series.map(row).join('')}</div>` +
+  tip.innerHTML = `<div class="t">${i === 0 ? 'Today' : 'End of year ' + yearLabel(rows[i - 1], P)}</div><div class="r num">${series.map(row).join('')}</div>` +
     `<div class="d num"><span>Median B − median A</span><b style="color:var(--${diff >= 0 ? 'b' : 'a'})">${sgn(diff)}</b></div>`;
   const tw = tip.offsetWidth;
   tip.style.left = (x(i) + 16 + tw > W ? x(i) - 16 - tw : x(i) + 16) + 'px';
@@ -717,10 +730,11 @@ function hideHover() {
 }
 $('chartWrap').addEventListener('pointermove', e => {
   if (!chart) return;
-  const { L, R, W, n } = chart;
+  const { L, R, W, t, span } = chart;
   const mx = e.clientX - $('chart').getBoundingClientRect().left;
   if (mx < L - 10 || mx > W - R + 10) return hideHover();
-  showHover(Math.round((mx - L) / (W - L - R) * (n - 1)));
+  const v = (mx - L) / (W - L - R) * span;
+  showHover(t.reduce((best, tv, i) => Math.abs(tv - v) < Math.abs(t[best] - v) ? i : best, 0));
 });
 $('chartWrap').addEventListener('pointerleave', hideHover);
 
@@ -744,27 +758,42 @@ function drawGrid({ salaries: sal, months, cells }, P) {
 }
 
 let tab = 'B';
-function drawTables(r) {
+const fmtPts = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// "2" or, for a partial calendar year, "1 (Oct–Dec)".
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function yearLabel(row, P) {
+  if (row.months >= 12) return String(row.year);
+  const first = row.year === 1 ? Math.min(12, Math.max(1, Math.round(P.startMonth))) - 1 : 0;
+  return `${row.year} (${MONTHS[first]}–${MONTHS[first + row.months - 1]})`;
+}
+
+function drawTables(r, P) {
   const sev = tab === 'B';
   const rows = sev ? r.b : r.a;
   const c = (v, cls = '') => `<td class="${v === 0 ? 'dim' : cls}">${v === 0 ? '–' : eur(v)}</td>`;
+  const pts = v => `<td class="${v === 0 ? 'dim' : ''}">${v === 0 ? '–' : fmtPts.format(v)}</td>`;
   const th = ([label, text]) => `<th>${label}${helpBtn(label, text)}</th>`;
-  let h = '<table class="data"><thead><tr><th>Year</th>' + [
-    ['Gross wage', 'Salary paid in this year: the current job until you leave, then the new job once it starts. Salaries rise by their growth rate from year 2 on.'],
+  let h = '<table class="data"><thead><tr>' + th(['Year', 'One calendar year per row, because income tax is assessed per calendar year. ' +
+    'The first row starts today and the last ends with the horizon, so both can cover only some months.']) + [
+    ['Gross wage', 'Salary paid in this year: the current job until you leave, then the new job once it starts. Salaries rise by their growth rate every January.'],
     ['ALG I', 'Monthly ALG I × months of unemployment that fall into this year.'],
     ...(sev ? [['Severance', 'Gross severance, in the year it is paid.']] : []),
     ['Social sec.', 'Your employee share of pension (9,3 %), unemployment (1,3 %), health (7,3 % + half the Zusatzbeitrag) and care insurance, ' +
       'month by month up to the contribution ceilings. None on ALG I and severance.'],
-    ['Income tax', 'Income tax + Soli + church tax for this year, including the tax on the severance. With joint assessment: the household’s tax minus what your partner would pay alone.'],
+    ['Income tax', 'Income tax + Soli + church tax for this year, including the tax on the severance. With joint assessment: the household’s tax minus what your partner would pay alone. ' +
+      'In the first year the tax is computed on the whole calendar year, including your current salary in the months before today; ' +
+      'the tax already withheld on those months is subtracted, as is their wage.'],
     ['Net income', 'Gross wage + ALG I + severance − social security − income tax.'],
-    ['Spending', 'Your net spending, raised each year by the expected inflation.'],
+    ['Pension pts', 'Statutory pension points (Entgeltpunkte) earned in this row’s months: gross salary up to the contribution ceiling ÷ average earnings of all insured; ' +
+      'on ALG I, 80 % of your old salary counts; search months without ALG I and the severance earn none. Average earnings and the ceiling grow every January by the wage and pension growth.'],
+    ['Spending', 'Your net spending, raised each year by the expected inflation; for the months of the year inside the horizon only.'],
     ['Wealth (end)', 'Value of your investments at the end of the year, in nominal euros and before the tax due when selling them. ' +
-      'Each year’s surplus or shortfall (net income − spending) is assumed to arrive mid-year and earns half a year’s return; the severance is invested from its payment month. ' +
+      'Each year’s surplus or shortfall (net income − spending) is assumed to arrive in the middle of the row’s months and earns half of their return; the severance is invested from its payment month. ' +
       'See the breakdown below the table for how the last row becomes the final wealth.'],
   ].map(th).join('') + '</tr></thead><tbody>';
   rows.forEach(x => {
-    h += `<tr><td>${x.year}</td>${c(x.wage)}${c(x.alg)}` + (sev ? c(x.sev, 'hl') : '') +
-      `${c(x.sv)}${c(x.tax)}${c(x.net)}${c(x.spend)}${c(x.wealth, 'strong')}</tr>`;
+    h += `<tr><td>${yearLabel(x, P)}</td>${c(x.wage)}${c(x.alg)}` + (sev ? c(x.sev, 'hl') : '') +
+      `${c(x.sv)}${c(x.tax)}${c(x.net)}${pts(x.points)}${c(x.spend)}${c(x.wealth, 'strong')}</tr>`;
   });
   $('tables').innerHTML = h + '</tbody></table>';
   document.querySelectorAll('#tabs button').forEach(b => {
@@ -825,15 +854,17 @@ addEventListener('resize', placeHelp);
 
 // Breakdown from the last table row to the final wealth figures, for both scenarios.
 const fmtPL = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
-function drawFinalWealth(r) {
-  const f = M.finalWealth(r), n = r.a.length;
+function drawFinalWealth(r, P) {
+  const f = M.finalWealth(r);
   const pl = f.a.priceLevel, rise = Math.round(100 * (pl - 1));
   const steps = [
-    ['', `Wealth (end) of year ${n}`, 'Last row of the table: nominal, before selling', x => eur(x.wealthEnd)],
+    ['', 'Wealth (end) of the last year', 'Last row of the table: nominal, before selling', x => eur(x.wealthEnd)],
     ['', '− Tax when selling everything', 'Abgeltungsteuer, Soli and church tax on gains not taxed yet, after Teilfreistellung and Sparer-Pauschbetrag',
       x => x.saleTax ? '−' + eur(x.saleTax) : '–'],
+    ['', '+ Pension rights', P.pensionInWealth ? 'Value at the end of the horizon of the pension points earned within it' : 'Not counted: switched off under Pension',
+      x => x.pension ? eur(x.pension) : '–'],
     ['total', '= Final wealth, nominal', 'The small “nominal” line under Final wealth', x => eur(x.nominal)],
-    ['', `÷ Price level ${fmtPL.format(pl)}`, `Prices rise by ${rise} % over ${n} years at your inflation rate`, () => '÷ ' + fmtPL.format(pl)],
+    ['', `÷ Price level ${fmtPL.format(pl)}`, `Prices rise by ${rise} % over ${P.horizon} years at your inflation rate`, () => '÷ ' + fmtPL.format(pl)],
     ['total', '= Final wealth in today’s money', 'The large figure under Final wealth, which the verdict compares', x => eur(x.real)],
   ];
   $('recon').innerHTML = `<table class="data"><thead><tr><th></th><th><span class="chip a">A</span>Stay</th>` +

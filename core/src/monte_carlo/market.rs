@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use crate::params::Params;
 use crate::random::Rng;
-use crate::simulation::{horizon_years, MarketPath};
+use crate::simulation::{periods, MarketPath};
 
 /// How strongly inflation sticks to last year's deviation from its mean (AR(1) coefficient).
 const INFLATION_PERSISTENCE: f64 = 0.7;
@@ -20,18 +20,21 @@ pub struct MarketModel {
 }
 
 impl MarketModel {
-    /// Returns are lognormal (mean `p.ret`, sd `return_vol`), independent between years.
-    /// Inflation mean-reverts to `p.inflation`, starting there.
+    /// One entry per calendar year of the horizon. Returns are lognormal (mean `p.ret`, sd `return_vol`),
+    /// independent between years; a partial year gets its share of the yearly variance, expressed as
+    /// a yearly rate. Inflation mean-reverts to `p.inflation`, starting there.
     pub fn sample_path(&self, p: &Params, rng: &mut Rng) -> MarketPath {
-        let n = horizon_years(p) as usize;
+        let periods = periods(p);
+        let n = periods.len();
         let shock_sd = self.inflation_vol * (1.0 - INFLATION_PERSISTENCE.powi(2)).sqrt();
         let mut returns = Vec::with_capacity(n);
         let mut inflation = Vec::with_capacity(n);
         let mut deviation = 0.0; // of inflation from its mean
-        for year in 0..n {
+        for (year, period) in periods.iter().enumerate() {
             // Draw both shocks every year, so the random stream does not depend on the settings.
             let (z_ret, z_infl) = (rng.normal(), rng.normal());
-            returns.push(lognormal_return(p.ret, self.return_vol, z_ret));
+            // (1 + r)^years then has log-variance years × the yearly one.
+            returns.push(lognormal_return(p.ret, self.return_vol, z_ret / period.years().sqrt()));
             if year > 0 {
                 deviation = INFLATION_PERSISTENCE * deviation + shock_sd * z_infl;
             }
@@ -84,6 +87,31 @@ mod tests {
         let m = MarketModel { return_vol: 0.15, inflation_vol: 0.01 };
         let path = m.sample_path(&p, &mut Rng::new(1));
         assert_eq!((path.returns.len(), path.inflation.len()), (7, 7));
+    }
+
+    #[test]
+    fn path_has_one_entry_per_calendar_year() {
+        let mut p = test_defaults();
+        p.start_month = 10.0;
+        let m = MarketModel { return_vol: 0.15, inflation_vol: 0.01 };
+        let path = m.sample_path(&p, &mut Rng::new(1));
+        assert_eq!((path.returns.len(), path.inflation.len()), (11, 11));
+    }
+
+    #[test]
+    fn a_partial_year_carries_its_share_of_the_risk() {
+        // Starting in October, the first period is 3 months: (1 + r)^0.25 keeps the yearly mean
+        // and has a quarter of the yearly variance of log returns.
+        let mut p = test_defaults();
+        p.start_month = 10.0;
+        let m = MarketModel { return_vol: 0.16, inflation_vol: 0.0 };
+        let mut rng = Rng::new(3);
+        let g: Vec<f64> = (0..PATHS * 4).map(|_| (1.0 + m.sample_path(&p, &mut rng).returns[0]).powf(0.25)).collect();
+        let (mean, _) = mean_sd(&g);
+        let (_, sd_log) = mean_sd(&g.iter().map(|x| x.ln()).collect::<Vec<_>>());
+        let var_log = (1.0 + (0.16f64 / 1.06).powi(2)).ln();
+        assert!((mean - 1.06f64.powf(0.25)).abs() < 0.002, "{mean}");
+        assert!((sd_log - (0.25 * var_log).sqrt()).abs() < 0.003, "{sd_log}");
     }
 
     #[test]
