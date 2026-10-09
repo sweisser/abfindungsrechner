@@ -23,3 +23,9 @@ The browser calls two wasm-bindgen exports, `analyze` and `monteCarlo`: JSON in,
 `monteCarlo` (2000 runs on every input change) returns the final-outcome summaries plus per-year wealth
 percentiles and 40 sample paths per scenario, which the wealth chart draws behind the deterministic run.
 Not tax advice.
+
+## Deployment (GitHub Pages)
+
+The site is fully static and the built WASM bundle is committed, so no build step is needed:
+push to GitHub, then *Settings → Pages → Source: Deploy from a branch → `main` / `/ (root)`*.
+Run `just build` and commit `core.js` / `core.wasm.js` whenever the Rust core changes.
