@@ -7,6 +7,9 @@ Compares *staying* in your job with *taking a severance package* and investing i
 > (ideally with a tax advisor) before making any decision based on them. This is not tax, legal or
 > financial advice.
 
+How the calculator works – what it simulates, which tax rules and assumptions it uses and what it
+leaves out – is explained in [METHODOLOGY.md](METHODOLOGY.md).
+
 - `core/` – Rust crate with all computations: tax, social security, ALG I, portfolio, simulation,
   break-evens, sensitivity grid and the Monte Carlo analysis (`monte_carlo/`, `random/`).
 - `core.js`, `core.wasm.js` – the crate compiled to WASM: wasm-bindgen bindings plus the module as base64
