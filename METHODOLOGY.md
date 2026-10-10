@@ -161,7 +161,30 @@ The simulated results show:
 The pension inputs (life expectancy, discount rate, pension growth) are not varied. The number of
 pension points does vary, because it depends on the salaries and search months drawn.
 
-## 7. What the calculator does not model
+## 7. Checking the figures yourself: the Excel download
+
+The **Excel** button above the year-by-year table downloads a workbook that recomputes the expected
+run of both scenarios with live formulas. Click a cell to see how it is computed; each row explains
+its method in the column on the right.
+
+- **Inputs:** every input of the calculator as a named cell (e.g. `salary`), plus the constants of
+  the code (tax tariff 2026, contribution rates, …). Edit them and the workbook recomputes. The
+  horizon and the current month are fixed, because they set the year columns; the level of the
+  mortality curve is fixed, because it is fitted iteratively (the Pension sheet flags it when it no
+  longer matches). Export again from the calculator to change them.
+- **Derived, Calendar, A Stay, B Severance, Pension:** the calculation step by step, one column per
+  calendar year, in the same order as the calculator's code: months, salaries, social security,
+  income tax (with Progressionsvorbehalt, Fünftelregelung, Soli, church tax and splitting), cash,
+  investments with their taxation, pension points and the value of a point.
+- **Result:** the final wealth of both scenarios and B − A, each next to the value the calculator
+  showed, with the difference.
+- **Analysis:** break-evens, the sensitivity grid and the Monte Carlo results, as plain values: they
+  need many runs of the whole calculation, which spreadsheet formulas cannot reproduce.
+
+The calculator's tests recompute the workbook's formulas for many input combinations and check that
+every figure equals the calculator's own result.
+
+## 8. What the calculator does not model
 
 These simplifications can matter for your decision. Adjust the inputs by hand where you can, and
 check the important points with an advisor.

@@ -48,6 +48,19 @@ test('pension rights are added to the final wealth only when counted', async () 
   assert.ok(on.realDiff < off.realDiff);
 });
 
+test('exportXlsx returns an Excel workbook', async () => {
+  const bytes = (await core).exportXlsx(inputs(), 50, 1);
+  assert.ok(bytes instanceof Uint8Array && bytes.length > 10000);
+  assert.strictEqual(Buffer.from(bytes.subarray(0, 2)).toString(), 'PK');
+  // Zip entry names are stored uncompressed.
+  assert.ok(Buffer.from(bytes).includes('xl/workbook.xml'));
+});
+
+test('exportXlsx throws on an empty horizon', async () => {
+  const c = await core;
+  assert.throws(() => c.exportXlsx(inputs({ horizon: 0 }), 50, 1), /horizon/);
+});
+
 test('invalid input throws a JS error', async () => {
   const c = await core;
   assert.throws(() => c.analyze({}), /missing field/);

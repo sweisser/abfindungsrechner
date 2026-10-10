@@ -38,6 +38,33 @@ let wasm_bindgen = (function(exports) {
     exports.analyze = analyze;
 
     /**
+     * JSON `{ params, uncertainty?, runs?, seed? }` in, the Excel workbook (xlsx bytes) out.
+     * @param {string} input
+     * @returns {Uint8Array}
+     */
+    function exportXlsx(input) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passStringToWasm0(input, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.exportXlsx(retptr, ptr0, len0);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            var r3 = getDataViewMemory0().getInt32(retptr + 4 * 3, true);
+            if (r3) {
+                throw takeObject(r2);
+            }
+            var v2 = getArrayU8FromWasm0(r0, r1).slice();
+            wasm.__wbindgen_export3(r0, r1 * 1, 1);
+            return v2;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    exports.exportXlsx = exportXlsx;
+
+    /**
      * JSON `{ params, uncertainty?, runs?, seed? }` in, JSON `MonteCarlo` out.
      * @param {string} input
      * @returns {string}
@@ -76,6 +103,13 @@ let wasm_bindgen = (function(exports) {
                 const ret = Error(getStringFromWasm0(arg0, arg1));
                 return addHeapObject(ret);
             },
+            __wbg___wbindgen_throw_41e9ee4f547fc59a: function(arg0, arg1) {
+                throw new Error(getStringFromWasm0(arg0, arg1));
+            },
+            __wbg_now_aa4ccb83129e9e55: function() {
+                const ret = Date.now();
+                return ret;
+            },
         };
         return {
             __proto__: null,
@@ -96,6 +130,11 @@ let wasm_bindgen = (function(exports) {
         if (idx < 1028) return;
         heap[idx] = heap_next;
         heap_next = idx;
+    }
+
+    function getArrayU8FromWasm0(ptr, len) {
+        ptr = ptr >>> 0;
+        return getUint8ArrayMemory0().subarray(ptr / 1, ptr / 1 + len);
     }
 
     let cachedDataViewMemory0 = null;

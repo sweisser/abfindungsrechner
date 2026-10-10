@@ -1,9 +1,9 @@
 //! Model parameters as entered in the UI.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Model parameters. Rates are fractions (0.06 = 6 %), money in EUR, months as numbers.
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
     /// Calendar month (1–12) in which the simulation starts, i.e. today.

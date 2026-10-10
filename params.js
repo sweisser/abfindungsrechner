@@ -162,7 +162,8 @@
   // The computation lives in core/ (Rust). `just build` compiles it with wasm-bindgen into
   // core.js (JS bindings, global `wasm_bindgen`) and core.wasm.js (the module as base64,
   // so the page also works when opened from disk).
-  // Resolves to { analyze(P), monteCarlo(P, runs, seed) }; errors are thrown as exceptions.
+  // Resolves to { analyze(P), monteCarlo(P, runs, seed), exportXlsx(P, runs, seed) }; errors are thrown
+  // as exceptions. exportXlsx returns the Excel workbook as a Uint8Array.
   function loadCore(bindings, b64) {
     const bytes = typeof atob === 'function' ? Uint8Array.from(atob(b64), c => c.charCodeAt(0))
                                              : Uint8Array.from(Buffer.from(b64, 'base64'));
@@ -170,6 +171,8 @@
       analyze: P => JSON.parse(bindings.analyze(JSON.stringify(P))),
       monteCarlo: (P, runs, seed) => JSON.parse(bindings.monteCarlo(JSON.stringify(
         { params: P, uncertainty: uncertainty(P), runs, seed }))),
+      exportXlsx: (P, runs, seed) => bindings.exportXlsx(JSON.stringify(
+        { params: P, uncertainty: uncertainty(P), runs, seed })),
     }));
   }
 

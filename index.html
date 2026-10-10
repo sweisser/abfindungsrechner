@@ -59,6 +59,12 @@
     display: grid; place-items: center; cursor: pointer; color: var(--muted); transition: color .15s, border-color .15s;
   }
   .icon-btn:hover { color: var(--text); border-color: var(--border-strong); }
+  .btn {
+    height: 34px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface);
+    display: inline-flex; align-items: center; gap: 7px; cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 500;
+    transition: color .15s, border-color .15s;
+  }
+  .btn:hover { color: var(--text); border-color: var(--border-strong); }
   .icon-btn .moon { display: none; }
   :root[data-theme="dark"] .icon-btn .sun { display: none; }
   :root[data-theme="dark"] .icon-btn .moon { display: block; }
@@ -360,9 +366,15 @@
           <h2>Year by year<span class="tags" data-tags="exp"></span></h2>
           <div class="desc">Expected values in nominal euros (not adjusted for inflation). Income tax includes Soli and church tax; net income includes severance after tax.</div>
         </div>
-        <div class="seg" id="tabs" role="tablist">
-          <button type="button" data-t="A" role="tab"><span class="chip a">A</span>Stay</button>
-          <button type="button" data-t="B" role="tab"><span class="chip b">B</span>Take severance</button>
+        <div class="controls">
+          <div class="seg" id="tabs" role="tablist">
+            <button type="button" data-t="A" role="tab"><span class="chip a">A</span>Stay</button>
+            <button type="button" data-t="B" role="tab"><span class="chip b">B</span>Take severance</button>
+          </div>
+          <button type="button" class="btn" id="excelBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+            Excel
+          </button><span class="help-slot" data-help-key="excel"></span>
         </div>
       </div>
       <div class="table-scroll"><div id="tables"></div></div>
@@ -529,6 +541,11 @@ const SECTION_HELP = {
     'Simulated returns are lognormal around the expected return, independent between years; inflation drifts back towards its expected value.'],
   real: ['Today’s money', 'Divides each year’s wealth by the price level of that year, so amounts have today’s purchasing power. ' +
     'Each simulated future uses its own inflation path; the dashed line uses the expected inflation.'],
+  excel: ['Excel download', 'Downloads a workbook that recomputes every figure of the expected run for A and B with live Excel formulas: ' +
+    'income, social security, income tax (incl. Progressionsvorbehalt and Fünftelregelung), ALG I, investments and their taxation, pension points and their value, final wealth. ' +
+    'Click a cell to see its formula; each row explains its method. Your inputs are named cells you can edit to recompute, except the horizon and the current month, which set the year columns. ' +
+    'The Result sheet puts each final figure next to the value shown here. Break-evens, the sensitivity grid and the simulated results need many runs of the whole calculation, ' +
+    'so they are included as plain values.'],
   grid: ['Sensitivity', 'Each cell: final wealth B − A in today’s money, after the tax due when selling, from one calculation with your main inputs. ' +
     'Only the new salary (rows: 60 / 80 / 100 / 120 % of your input, rounded to 1.000 €) and the months until the new job (columns) change.'],
 };
@@ -874,6 +891,20 @@ function drawFinalWealth(r, P) {
 }
 
 document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => { tab = b.dataset.t; update(); }));
+$('excelBtn').addEventListener('click', () => {
+  if (!core) return;
+  try {
+    const bytes = core.exportXlsx(M.normalize(raw), MC_RUNS, MC_SEED);
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const a = Object.assign(document.createElement('a'), { href: url, download: `severance-calculator-${new Date().toISOString().slice(0, 10)}.xlsx` });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } catch (e) {
+    alert('Could not create the Excel file: ' + e.message);
+  }
+});
 $('themeBtn').addEventListener('click', () => {
   const h = document.documentElement;
   h.dataset.theme = h.dataset.theme === 'dark' ? 'light' : 'dark';

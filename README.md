@@ -27,9 +27,13 @@ Tasks (needs [just](https://github.com/casey/just)):
 | `just build` | rebuild `core.js` / `core.wasm.js` |
 | `just check` | lint, Rust tests, build and web tests – run before committing |
 
-The browser calls two wasm-bindgen exports, `analyze` and `monteCarlo`: JSON in, JSON out; errors are thrown.
+The browser calls three wasm-bindgen exports: `analyze` and `monteCarlo` (JSON in, JSON out) and `exportXlsx`
+(the Monte Carlo request in, an Excel workbook as bytes out); errors are thrown.
 `monteCarlo` (2000 runs on every input change) returns the final-outcome summaries plus per-year wealth
 percentiles and 40 sample paths per scenario, which the wealth chart draws behind the deterministic run.
+`exportXlsx` (the Excel button, `core/src/export/`) writes the deterministic run as live formulas that mirror
+the Rust code; its own formula evaluator stores their results in the file, and the tests check every figure
+against the simulation.
 
 ## Deployment (GitHub Pages)
 

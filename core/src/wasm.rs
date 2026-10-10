@@ -15,3 +15,9 @@ pub fn analyze(input: &str) -> Result<String, JsError> {
 pub fn monte_carlo(input: &str) -> Result<String, JsError> {
     api::monte_carlo_json(input).map_err(|e| JsError::new(&e))
 }
+
+/// JSON `{ params, uncertainty?, runs?, seed? }` in, the Excel workbook (xlsx bytes) out.
+#[wasm_bindgen(js_name = exportXlsx)]
+pub fn export_xlsx(input: &str) -> Result<Vec<u8>, JsError> {
+    api::export_xlsx_json(input).map_err(|e| JsError::new(&e))
+}

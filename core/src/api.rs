@@ -5,6 +5,7 @@
 use serde::Deserialize;
 
 use crate::analysis::analyze_params;
+use crate::export;
 use crate::monte_carlo::{self, Uncertainty};
 use crate::params::Params;
 
@@ -30,11 +31,23 @@ struct MonteCarloRequest {
     seed: u64,
 }
 
+impl MonteCarloRequest {
+    fn runs(&self) -> u32 {
+        self.runs.map_or(DEFAULT_RUNS, |n| n.clamp(1.0, MAX_RUNS as f64) as u32)
+    }
+}
+
 /// `MonteCarloRequest` in, `MonteCarlo` out.
 pub fn monte_carlo_json(input: &str) -> Result<String, String> {
     let r: MonteCarloRequest = parse(input)?;
-    let runs = r.runs.map_or(DEFAULT_RUNS, |n| n.clamp(1.0, MAX_RUNS as f64) as u32);
-    to_json(&monte_carlo::run(&r.params, &r.uncertainty, runs, r.seed))
+    to_json(&monte_carlo::run(&r.params, &r.uncertainty, r.runs(), r.seed))
+}
+
+/// `MonteCarloRequest` in, the Excel workbook (xlsx bytes) out: the expected run as formulas, the
+/// break-evens, sensitivity grid and this Monte Carlo run as values.
+pub fn export_xlsx_json(input: &str) -> Result<Vec<u8>, String> {
+    let r: MonteCarloRequest = parse(input)?;
+    export::workbook(&r.params, &r.uncertainty, r.runs(), r.seed)
 }
 
 fn parse<'a, T: Deserialize<'a>>(input: &'a str) -> Result<T, String> {
@@ -98,6 +111,18 @@ mod tests {
     fn monte_carlo_json_caps_the_number_of_runs() {
         let out = parse(mc_request(json!({ "runs": 1e9 })).unwrap());
         assert_eq!(out["runs"], MAX_RUNS);
+    }
+
+    #[test]
+    fn export_xlsx_json_returns_a_workbook() {
+        let req = json!({ "params": test_defaults_json(), "runs": 16, "seed": 1 });
+        let bytes = export_xlsx_json(&req.to_string()).unwrap();
+        assert_eq!(&bytes[..2], b"PK");
+    }
+
+    #[test]
+    fn export_xlsx_json_rejects_invalid_requests() {
+        assert!(export_xlsx_json("{}").unwrap_err().contains("missing field `params`"));
     }
 
     #[test]

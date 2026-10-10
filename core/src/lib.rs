@@ -5,6 +5,7 @@
 
 pub mod analysis;
 pub mod api;
+pub mod export;
 pub mod income;
 pub mod monte_carlo;
 pub mod params;
@@ -16,6 +17,6 @@ pub mod tax;
 pub mod wasm;
 
 pub use analysis::{analyze_params, Analysis};
-pub use api::{analyze_json, monte_carlo_json};
+pub use api::{analyze_json, export_xlsx_json, monte_carlo_json};
 pub use params::Params;
 pub use simulation::{simulate, Sim};

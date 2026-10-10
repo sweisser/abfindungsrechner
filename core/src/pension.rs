@@ -72,6 +72,11 @@ impl Mortality {
         Mortality { b }
     }
 
+    /// The level `b` of the force of mortality.
+    pub fn b(&self) -> f64 {
+        self.b
+    }
+
     /// Probability that someone aged `age` is still alive `t` years later.
     pub fn survival(&self, age: f64, t: f64) -> f64 {
         let c = GOMPERTZ_SLOPE;
