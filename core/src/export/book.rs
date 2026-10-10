@@ -37,6 +37,8 @@ pub enum Style {
     Static,
     /// Explanations next to the figures.
     Note,
+    /// The defined name of the cell to its left, as formulas use it.
+    Name,
 }
 
 /// Number format.

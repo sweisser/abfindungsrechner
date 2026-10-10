@@ -40,12 +40,12 @@ fn build(p: &Params, analysis: &Analysis, mc: &MonteCarlo) -> (Builder, Sheets) 
     let sh = Sheets {
         readme: b.add_sheet("Read me", 1),
         result: b.add_sheet("Result", 3),
-        inputs: b.add_sheet("Inputs", 1),
-        derived: b.add_sheet("Derived", 1),
+        inputs: b.add_named_sheet("Inputs"),
+        derived: b.add_named_sheet("Derived"),
         calendar: b.add_sheet("Calendar", n),
         a: b.add_sheet("A Stay", n),
         b: b.add_sheet("B Severance", n),
-        pension: b.add_sheet("Pension", 1),
+        pension: b.add_named_sheet("Pension"),
         analysis: b.add_sheet("Analysis", 7),
     };
     inputs::build(&mut b, sh.inputs, p);
@@ -264,6 +264,16 @@ mod tests {
             let v = evaluate(&b.book).unwrap();
             let status = &v[&b.addr(sh.pension, "le_status", 0)];
             assert_eq!(status == &Value::Text("OK".into()), ok, "{what}: {status:?}");
+        }
+    }
+
+    #[test]
+    fn every_defined_name_is_shown_next_to_its_cell() {
+        let (b, _) = built(&test_defaults());
+        assert!(b.book.names.len() > 80);
+        for (name, &(s, r, c)) in &b.book.names {
+            let shown = b.book.cell((s, r, c + 1)).map(|x| x.content.clone());
+            assert_eq!(shown, Some(Content::Text(name.clone())), "{name}");
         }
     }
 

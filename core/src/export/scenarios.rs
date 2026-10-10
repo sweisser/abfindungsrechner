@@ -36,7 +36,8 @@ pub fn year_header(b: &mut Builder, p: &Params) {
 pub fn derived(b: &mut Builder, sh: &Sheets) {
     b.on(sh.derived);
     b.text("Derived values", Style::Title);
-    b.text("Values computed once from the inputs and used by the other sheets (all are defined names).", Style::Note);
+    b.text("Values computed once from the inputs and used by the other sheets by the name next to them.", Style::Note);
+    b.named_header();
     let named = |b: &mut Builder, key: &str, label: &str, fmt: Fmt, note: &str, f: &str| {
         let f = f.to_string();
         b.row(key, label, fmt, note, move |_, _| f.clone());

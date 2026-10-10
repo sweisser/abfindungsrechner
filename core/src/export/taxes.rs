@@ -180,7 +180,7 @@ mod tests {
         ];
         for joint in [false, true] {
             let mut b = Builder::new();
-            let s = b.add_sheet("Inputs", 1);
+            let s = b.add_named_sheet("Inputs");
             b.on(s);
             b.put("joint", "", Style::Input, Fmt::General, "", |_| Content::Bool(joint));
             b.name("joint");

@@ -211,9 +211,11 @@ pub fn build(b: &mut Builder, s: usize, p: &Params) {
     b.text("Inputs", Style::Title);
     b.text(
         "Blue: your inputs from the calculator, edit them to recompute the workbook. Orange: fixed at export \
-         (they set the year columns), re-export from the calculator to change them.",
+         (they set the year columns), re-export from the calculator to change them. Formulas refer to these cells \
+         by the name next to them; type a name into Excel’s Name Box to jump to its cell.",
         Style::Note,
     );
+    b.named_header();
     let values = values(p);
     for (group, inputs) in INPUTS {
         b.heading(group);

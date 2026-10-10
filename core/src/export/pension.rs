@@ -24,6 +24,7 @@ pub fn build(b: &mut Builder, sh: &Sheets, p: &Params) {
          contributions and tax, weighted by the chance to be alive and discounted to the end of the horizon.",
         Style::Note,
     );
+    b.named_header();
     let named = |b: &mut Builder, key: &str, label: &str, fmt: Fmt, note: &str, f: &str| {
         let f = f.to_string();
         b.row(key, label, fmt, note, move |_, _| f.clone());

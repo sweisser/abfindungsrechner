@@ -29,6 +29,7 @@ fn format(style: Style, fmt: Fmt) -> Format {
         Style::Total => f.set_bold(),
         Style::Static => f.set_background_color(Color::RGB(0xE6F4EA)),
         Style::Note => f.set_italic().set_font_color(Color::RGB(0x666666)),
+        Style::Name => f.set_font_name("Consolas").set_font_color(Color::RGB(0x1F4FBF)),
     }
 }
 

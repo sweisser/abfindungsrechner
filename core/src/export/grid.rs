@@ -1,5 +1,6 @@
 //! Builds sheets row by row. Each sheet is a grid: label in column A, one value column per year (or a
-//! single value column), and an explanation after the last value column. Rows have keys, so formulas
+//! single value column), and an explanation after the last value column. Sheets of named cells show
+//! each cell's defined name in a column between value and explanation. Rows have keys, so formulas
 //! refer to `stay_m` instead of hard-coded addresses.
 
 use std::collections::HashMap;
@@ -12,8 +13,9 @@ pub const FIRST: u16 = 1;
 pub struct Builder {
     pub book: Book,
     rows: HashMap<(usize, String), u32>,
-    /// Per sheet: number of value columns and the next free row.
+    /// Per sheet: number of value columns, whether it has a name column, and the next free row.
     cols: Vec<u16>,
+    named: Vec<bool>,
     next: Vec<u32>,
     /// The sheet rows are added to.
     cur: usize,
@@ -21,20 +23,47 @@ pub struct Builder {
 
 impl Builder {
     pub fn new() -> Self {
-        Builder { book: Book::default(), rows: HashMap::new(), cols: Vec::new(), next: Vec::new(), cur: 0 }
+        Builder {
+            book: Book::default(),
+            rows: HashMap::new(),
+            cols: Vec::new(),
+            named: Vec::new(),
+            next: Vec::new(),
+            cur: 0,
+        }
     }
 
     /// Add a sheet with `ncols` value columns; its first row is the title.
     pub fn add_sheet(&mut self, name: &str, ncols: u16) -> usize {
+        self.sheet(name, ncols, false)
+    }
+
+    /// Add a sheet with one value column and a column showing the defined names (see `name`).
+    pub fn add_named_sheet(&mut self, name: &str) -> usize {
+        self.sheet(name, 1, true)
+    }
+
+    fn sheet(&mut self, name: &str, ncols: u16, named: bool) -> usize {
         let s = self.book.add_sheet(name);
         self.cols.push(ncols);
+        self.named.push(named);
         self.next.push(0);
-        self.book.sheets[s].widths.insert(0, 46.0);
+        let note_col = self.note_col(s);
+        let widths = &mut self.book.sheets[s].widths;
+        widths.insert(0, 46.0);
         for c in 0..ncols {
-            self.book.sheets[s].widths.insert(FIRST + c, 14.0);
+            widths.insert(FIRST + c, 14.0);
         }
-        self.book.sheets[s].widths.insert(FIRST + ncols, 80.0);
+        if named {
+            widths.insert(FIRST + ncols, 22.0);
+        }
+        widths.insert(note_col, 80.0);
         s
+    }
+
+    /// Column of the explanations on sheet `s`.
+    pub fn note_col(&self, s: usize) -> u16 {
+        FIRST + self.cols[s] + self.named[s] as u16
     }
 
     /// Continue adding rows to sheet `s`.
@@ -147,6 +176,15 @@ impl Builder {
         self.put(key, label, Style::Header, Fmt::General, "", cells);
     }
 
+    /// Column headings of a named sheet: value, name, explanation.
+    pub fn named_header(&mut self) {
+        let (s, r) = (self.cur, self.take_row());
+        assert!(self.named[s], "only on sheets made with add_named_sheet");
+        for (c, h) in [(FIRST, "Value"), (FIRST + 1, "Name (used in formulas)"), (FIRST + 2, "Explanation")] {
+            self.book.set((s, r, c), Cell::new(Content::Text(h.into()), Style::Header, Fmt::General));
+        }
+    }
+
     /// A row whose value columns are formulas `f(builder, column)`.
     pub fn row(&mut self, key: &str, label: &str, fmt: Fmt, note: &str, f: impl Fn(&Self, u16) -> String) {
         self.formula_row(key, label, Style::Formula, fmt, note, f);
@@ -183,8 +221,7 @@ impl Builder {
             self.book.set((s, r, FIRST + c), Cell::new(cells(c), style, fmt));
         }
         if !note.is_empty() {
-            self.book
-                .set((s, r, FIRST + self.cols[s]), Cell::new(Content::Text(note.into()), Style::Note, Fmt::General));
+            self.book.set((s, r, self.note_col(s)), Cell::new(Content::Text(note.into()), Style::Note, Fmt::General));
         }
     }
 
@@ -199,15 +236,16 @@ impl Builder {
             self.book.set((s, r, FIRST + c as u16), cell);
         }
         if !note.is_empty() {
-            self.book
-                .set((s, r, FIRST + self.cols[s]), Cell::new(Content::Text(note.into()), Style::Note, Fmt::General));
+            self.book.set((s, r, self.note_col(s)), Cell::new(Content::Text(note.into()), Style::Note, Fmt::General));
         }
     }
 
-    /// Make the single value of row `key` on the current sheet a defined name.
+    /// Make the single value of row `key` on the current (named) sheet a defined name, shown next to it.
     pub fn name(&mut self, key: &str) {
-        let a = self.addr(self.cur, key, 0);
-        self.book.define(key, a);
+        assert!(self.named[self.cur], "names only on sheets made with add_named_sheet");
+        let (s, r, c) = self.addr(self.cur, key, 0);
+        self.book.define(key, (s, r, c));
+        self.book.set((s, r, c + 1), Cell::new(Content::Text(key.into()), Style::Name, Fmt::General));
     }
 
     pub fn freeze(&mut self, row: u32, col: u16) {
@@ -239,5 +277,20 @@ mod tests {
         assert_eq!(cell((t, 0, 1)), Content::Formula("=SUM('A Stay'!B2:D2)".into()));
         assert_eq!(cell((t, 1, 1)), Content::Formula("='A Stay'!D2".into()));
         assert_eq!(cell((t, 2, 1)), Content::Formula("=B4+1".into()));
+    }
+
+    #[test]
+    fn named_sheets_show_the_name_between_value_and_note() {
+        let mut b = Builder::new();
+        let s = b.add_named_sheet("Inputs");
+        b.on(s);
+        b.put("salary", "Gross salary", Style::Input, Fmt::Eur, "per year", |_| Content::Number(1.0));
+        b.name("salary");
+        b.put("label_only", "Unnamed row", Style::Input, Fmt::Eur, "", |_| Content::Number(2.0));
+        let cell = |a| b.book.cell(a).map(|c| (c.content.clone(), c.style));
+        assert_eq!(b.book.names["salary"], (s, 0, 1));
+        assert_eq!(cell((s, 0, 2)), Some((Content::Text("salary".into()), Style::Name)));
+        assert_eq!(cell((s, 0, 3)), Some((Content::Text("per year".into()), Style::Note)));
+        assert_eq!(cell((s, 1, 2)), None);
     }
 }

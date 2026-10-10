@@ -259,7 +259,8 @@ pub fn readme(b: &mut Builder, sh: &Sheets) {
         "",
         "Sheets",
         "Result: final wealth of both scenarios and B − A, next to the calculator’s values.",
-        "Inputs: your inputs (named cells, e.g. salary) and the constants of the calculator’s code.",
+        "Inputs: your inputs and the constants of the calculator’s code. Formulas refer to them by name (e.g. salary), \
+         shown next to each value; type a name into Excel’s Name Box to jump to its cell.",
         "Derived: values computed once from the inputs (rounded months, combined rates, the partner’s tax, monthly ALG I).",
         "Calendar: one column per calendar (= tax) year: months, prices, salaries, the severance year.",
         "A Stay / B Severance: income, social security, income tax, cash, investments and pension points per year.",
